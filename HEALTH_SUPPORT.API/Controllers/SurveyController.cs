@@ -63,11 +63,6 @@ namespace HEALTH_SUPPORT.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> DeleteSurvey(Guid SurveyId)
         {
-            var exstingSurvey = await _surveyService.GetSurveyById(SurveyId);
-            if (exstingSurvey == null)
-            {
-                return NotFound(new { message = "Survey Not Found" });
-            }
             await _surveyService.RemoveSurvey(SurveyId);
             return Ok(new { message = "Delete Survey Successfully" });
         }
