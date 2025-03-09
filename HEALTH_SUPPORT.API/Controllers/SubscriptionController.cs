@@ -79,46 +79,48 @@ namespace HEALTH_SUPPORT.API.Controllers
             return Ok(new { message = "Subscription deleted successfully" });
         }
 
-        [HttpPost("register", Name = "RegisterSubscription")]
+        //[HttpPost(Name = "CreateOrder")]
+        //[ProducesResponseType(StatusCodes.Status201Created)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //public async Task<ActionResult> CreateOrder(Guid subscriptionDataId, Guid accountId, int quantity)
+        //{
+        //    if (subscriptionDataId == Guid.Empty || accountId == Guid.Empty || quantity <= 0)
+        //    {
+        //        return BadRequest(new { message = "Invalid order data. Please provide valid SubscriptionDataId, AccountId, and Quantity." });
+        //    }
+
+        //    var orderId = await _subscriptionService.CreateOrder(subscriptionDataId, accountId, quantity);
+
+        //    if (orderId == Guid.Empty)
+        //    {
+        //        return BadRequest(new { message = "Failed to create order. Please check the provided data." });
+        //    }
+
+        //    var orderDetails = await _subscriptionService.GetOrderDetails(orderId);
+
+        //    if (orderDetails == null)
+        //    {
+        //        return BadRequest(new { message = "Order created but details could not be retrieved." });
+        //    }
+
+        //    return CreatedAtRoute("GetOrderDetails", new { orderId = orderId }, new { message = "Order created successfully" });
+        //}
+
+        [HttpGet("{orderId}", Name = "GetOrderDetails")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> RegisterSubscription([FromBody] SubscriptionRequest.RegisterSubscriptionModel model)
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> GetOrderDetails(Guid orderId)
         {
-            if (model == null || model.SubscriptionId == Guid.Empty)
+            var result = await _subscriptionService.GetOrderDetails(orderId);
+
+            if (result == null)
             {
-                return BadRequest(new { message = "Invalid subscription data" });
+                return NotFound(new { message = "Order not found" });
             }
-            var accountId = GetAccountIdFromClaims();
-            await _subscriptionService.RegisterSubscription(accountId, model);
-            return Ok(new { message = "Subscription registered successfully" });
+
+            return Ok(result);
         }
 
-        [HttpGet("user-subscriptions", Name = "GetUserSubscriptions")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult> GetUserSubscriptions()
-        {
-            var accountId = GetAccountIdFromClaims();
-            var subscriptions = await _subscriptionService.GetUserSubscriptions(accountId);
-            return Ok(subscriptions);
-        }
 
-        [HttpDelete("cancel/{orderId}", Name = "CancelSubscription")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> CancelSubscription(Guid orderId)
-        {
-            if (orderId == Guid.Empty)
-            {
-                return BadRequest(new { message = "Invalid order ID" });
-            }
-            await _subscriptionService.CancelSubscription(orderId);
-            return Ok(new { message = "Subscription canceled successfully" });
-        }
-        private Guid GetAccountIdFromClaims()
-        {
-            var userIdClaim = User.FindFirst("sub")?.Value;
-            return Guid.TryParse(userIdClaim, out var accountId) ? accountId : throw new UnauthorizedAccessException("Invalid account ID");
-        }
     }
 }

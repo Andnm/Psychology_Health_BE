@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Net;
 using System.Net.Mail;
+using HEALTH_SUPPORT.Repositories.Entities;
+using HEALTH_SUPPORT.Repositories.Repository;
 using HEALTH_SUPPORT.Services.IServices;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -11,11 +13,13 @@ namespace HEALTH_SUPPORT.Services.Implementations
     {
         private readonly IConfiguration _configuration;
         private readonly IMemoryCache _cache;
+        private readonly IBaseRepository<Account, Guid> _accountRepository;
 
-        public EmailService(IConfiguration configuration, IMemoryCache cache)
+        public EmailService(IConfiguration configuration, IMemoryCache cache, IBaseRepository<Account, Guid> accountRepository)
         {
             _configuration = configuration;
             _cache = cache;
+            _accountRepository = accountRepository;
         }
 
         public void GenerateOtp(string email)
@@ -61,10 +65,15 @@ namespace HEALTH_SUPPORT.Services.Implementations
                 return false;
             }
 
-            // Xác thực thành công, lưu trạng thái đã xác thực OTP
             _cache.Set($"OTP_Verified_{email}", true, TimeSpan.FromHours(1));
 
-            // Xóa OTP sau khi xác thực thành công để tránh sử dụng lại
+            var account = _accountRepository.GetAll().FirstOrDefault(a => a.Email == email);
+            if (account != null && !account.IsEmailVerified)
+            {
+                account.IsEmailVerified = true;
+                _accountRepository.Update(account).Wait();
+            }
+
             _cache.Remove(email);
 
             return true;

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -54,6 +55,13 @@ namespace HEALTH_SUPPORT.Services.RequestModel
             public string? PasswordSalt { get; set; }
         }
 
+        public class UpdatePasswordModel
+        {
+            public Guid AccountId { get; set; }
+            public string OldPassword { get; set; }
+            public string NewPassword { get; set; }
+        }
+
         public class LoginRequestModel
         {
             public string Email { get; set; }
@@ -70,6 +78,11 @@ namespace HEALTH_SUPPORT.Services.RequestModel
         {
             public string Email { get; set; }
             public string Otp { get; set; }
+        }
+
+        public class UploadAvatarModel
+        {
+            public IFormFile File { get; set; }
         }
     }
 }

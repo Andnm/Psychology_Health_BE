@@ -18,15 +18,17 @@ namespace HEALTH_SUPPORT.Services.Implementations
         private readonly IBaseRepository<Survey, Guid> _surveyRepository;
         private readonly ISurveyQuestionService _surveyQuestionService;
         private readonly ISurveyAnswerService _surveyAnswerService;
+        private readonly IAccountSurveyService _accountSurveyService;
 
-        public SurveyService(IBaseRepository<Survey, Guid> surveyRepository, ISurveyQuestionService surveyQuestionService, ISurveyAnswerService surveyAnswerService)
+        public SurveyService(IBaseRepository<Survey, Guid> surveyRepository, ISurveyQuestionService surveyQuestionService, ISurveyAnswerService surveyAnswerService, IAccountSurveyService accountSurveyService)
         {
             _surveyRepository = surveyRepository;
             _surveyQuestionService = surveyQuestionService;
             _surveyAnswerService = surveyAnswerService;
+            _accountSurveyService = accountSurveyService;
         }
 
-        public async Task AddSurvey(SurveyRequest.CreateSurveyRequest model)
+        public async Task AddSurvey(string userID, SurveyRequest.CreateSurveyRequest model)
         {
             Survey survey = new Survey
             {
@@ -36,6 +38,15 @@ namespace HEALTH_SUPPORT.Services.Implementations
             };
             await _surveyRepository.Add(survey);
             await _surveyRepository.SaveChangesAsync();
+
+            //AccountSurvey
+            var accountSurvey = new AccountSurveyRequest.CreateAccountSurveyModel
+            {
+                AccountId = Guid.Parse(userID),
+                SurveyId = survey.Id
+            };
+            await _accountSurveyService.AddAccountSurvey(accountSurvey);
+
             if (model.QuestionList.Any())
             {
                 await _surveyQuestionService.AddSurveyQuestionForSurvey(survey.Id, model.QuestionList);

@@ -25,7 +25,9 @@ namespace HEALTH_SUPPORT.Services.Implementations
         private readonly IBaseRepository<Account, Guid> _accountRepository;
         private readonly IBaseRepository<Role, Guid> _roleRepository;
         private readonly IConfiguration _configuration;
+
         private readonly IHostEnvironment _environment;
+        private readonly IAvatarRepository _avatarRepository;
 
         public AccountService(IBaseRepository<Account, Guid> accountRepository, IBaseRepository<Role, Guid> roleRepository, IConfiguration configuration, IHostEnvironment environment)
         {
@@ -158,6 +160,22 @@ namespace HEALTH_SUPPORT.Services.Implementations
             }
         }
 
+        public async Task<bool> UpdatePassword(AccountRequest.UpdatePasswordModel model)
+        {
+            var account = await _accountRepository.GetById(model.AccountId);
+            if (account == null || account.IsDeleted) throw new Exception("Tài khoản không tồn tại hoặc đã bị xóa.");
+
+            bool isOldPasswordCorrect = BCrypt.Net.BCrypt.Verify(model.OldPassword, account.PasswordHash);
+            if (!isOldPasswordCorrect)
+            {
+                throw new Exception("Mật khẩu cũ không chính xác.");
+            }
+            string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+            account.PasswordHash = newHashedPassword;
+            await _accountRepository.Update(account);
+            await _accountRepository.SaveChangesAsync();
+            return true;
+        }
         public async Task<AccountResponse.LoginResponseModel> ValidateLoginAsync(AccountRequest.LoginRequestModel model)
         {
             // Tìm account theo UserName và đảm bảo không bị xóa
@@ -165,12 +183,9 @@ namespace HEALTH_SUPPORT.Services.Implementations
                 .Include(a => a.Role)
                 .FirstOrDefaultAsync(a => a.Email == model.Email && !a.IsDeleted);
 
-            if (account == null)
+            if (account == null || !BCrypt.Net.BCrypt.Verify(model.Password, account.PasswordHash))
                 return null;
 
-            // So sánh mật khẩu (trong thực tế nên sử dụng phương pháp băm mật khẩu)
-            if (!BCrypt.Net.BCrypt.Verify(model.Password, account.PasswordHash))
-                return null;
 
             account.LoginDate = DateTimeOffset.UtcNow;
             await _accountRepository.Update(account);
@@ -180,7 +195,8 @@ namespace HEALTH_SUPPORT.Services.Implementations
             {
                 Id = account.Id,
                 UserName = account.UseName,
-                RoleName = account.Role?.Name ?? "Unknown"
+                RoleName = account.Role?.Name ?? "Unknown",
+                IsEmailVerified = account.IsEmailVerified
             };
         }
 
@@ -211,6 +227,70 @@ namespace HEALTH_SUPPORT.Services.Implementations
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+        
+        public async Task<bool> VerifyEmailAsync(string email)
+        {
+            var account = await _accountRepository.GetAll()
+                .Include(a => a.Role)
+                .FirstOrDefaultAsync(a => a.Email == email);
+            if (account == null) return false;
+
+            if (account.IsEmailVerified) return true;
+
+            account.IsEmailVerified = true;
+            await _accountRepository.Update(account);
+            return true;
+        }
+        
+        public async Task<AccountResponse.AvatarResponseModel> UploadAvatarAsync(Guid accountId, AccountRequest.UploadAvatarModel model)
+        {
+            var account = await _accountRepository.GetById(accountId);
+            if (account == null) throw new Exception("Account not found");
+
+            // Vì IHostEnvironment không có WebRootPath, cần tự tạo đường dẫn wwwroot
+            string uploadsFolder = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads");
+            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+            string fileName = $"{Guid.NewGuid()}_{model.File.FileName}";
+            string filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await model.File.CopyToAsync(stream);
+            }
+
+            string relativePath = $"/uploads/{fileName}";
+            await _avatarRepository.UpdateAvatarAsync(accountId, relativePath);
+
+            return new AccountResponse.AvatarResponseModel { AvatarUrl = relativePath };
+        }
+
+        public async Task<AccountResponse.AvatarResponseModel> UpdateAvatarAsync(Guid accountId, AccountRequest.UploadAvatarModel model)
+        {
+            var account = await _accountRepository.GetById(accountId);
+            if (account == null) throw new Exception("Account not found");
+
+            if (!string.IsNullOrEmpty(account.ImgUrl))
+            {
+                string oldFilePath = Path.Combine(_environment.ContentRootPath, "wwwroot", account.ImgUrl.TrimStart('/'));
+                if (File.Exists(oldFilePath)) File.Delete(oldFilePath);
+            }
+            return await UploadAvatarAsync(accountId, model);
+        }
+
+        public async Task RemoveAvatarAsync(Guid accountId)
+        {
+            var account = await _accountRepository.GetById(accountId);
+            if (account == null) throw new Exception("Account not found");
+
+            if (!string.IsNullOrEmpty(account.ImgUrl))
+            {
+                string filePath = Path.Combine(_environment.ContentRootPath, "wwwroot", account.ImgUrl.TrimStart('/'));
+                if (File.Exists(filePath)) File.Delete(filePath);
+
+                await _avatarRepository.UpdateAvatarAsync(accountId, null);
+            }
         }
     }
 }

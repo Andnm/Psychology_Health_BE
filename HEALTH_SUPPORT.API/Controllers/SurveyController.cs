@@ -2,6 +2,7 @@
 using HEALTH_SUPPORT.Services.RequestModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HEALTH_SUPPORT.API.Controllers
 {
@@ -36,12 +37,18 @@ namespace HEALTH_SUPPORT.API.Controllers
             }
             return Ok(result);
         }
+        [Authorize]
         [HttpPost(Name = "CreateSurvey")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<ActionResult> CreateSurvey([FromBody] SurveyRequest.CreateSurveyRequest model)
         {
-            await _surveyService.AddSurvey(model);
-            return CreatedAtRoute("GetSurveyById", new { SurveyId = /* newly created id */ Guid.NewGuid() }, new { message = "Survey Type created successfully" });
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId is null)
+            {
+                throw new Exception("Không tìm thấy người dùng.");
+            }
+            await _surveyService.AddSurvey(userId, model);
+            return CreatedAtRoute("GetSurveyById", new { SurveyId = /* newly created id */ Guid.NewGuid() }, new { message = "Survey created successfully" });
         }
         //Update Survey Type
         [HttpPut("{SurveyId}", Name = "UpdateSurvey")]
@@ -63,6 +70,11 @@ namespace HEALTH_SUPPORT.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> DeleteSurvey(Guid SurveyId)
         {
+            var exstingSurvey = await _surveyService.GetSurveyById(SurveyId);
+            if (exstingSurvey == null)
+            {
+                return NotFound(new { message = "Survey Not Found" });
+            }
             await _surveyService.RemoveSurvey(SurveyId);
             return Ok(new { message = "Delete Survey Successfully" });
         }

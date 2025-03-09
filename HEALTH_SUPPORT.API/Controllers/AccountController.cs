@@ -51,9 +51,9 @@ namespace HEALTH_SUPPORT.API.Controllers
             {
                 return Unauthorized(new { message = "Email hoặc mật khẩu không đúng" });
             }
-            if (!_cache.TryGetValue($"OTP_Verified_{model.Email}", out bool isVerified) || !isVerified)
+            if (!loginResult.IsEmailVerified)
             {
-                return BadRequest(new { message = "Bạn cần xác thực OTP trước khi đăng nhập." });
+                return BadRequest(new { message = "Bạn cần xác thực email bằng OTP trước khi đăng nhập." });
             }
             var token = _accountService.GenerateJwtToken(loginResult);
 
@@ -102,6 +102,23 @@ namespace HEALTH_SUPPORT.API.Controllers
             return Ok(new { message = "Account updated successfully" });
         }
 
+        [HttpPost("UpdatePassword")]
+        public async Task<IActionResult> UpdatePassword([FromBody] AccountRequest.UpdatePasswordModel request)
+        {
+            try
+            {
+                bool result = await _accountService.UpdatePassword(request);
+                if (result)
+                    return Ok(new { message = "Cập nhật mật khẩu thành công." });
+                else
+                    return BadRequest(new { message = "Cập nhật mật khẩu thất bại." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpDelete("{accountId}", Name = "DeleteAccount")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -114,6 +131,28 @@ namespace HEALTH_SUPPORT.API.Controllers
             }
             await _accountService.RemoveAccount(accountId);
             return Ok(new { message = "Account deleted successfully" });
+        }
+
+
+        [HttpPost("{accountId}/avatar")]
+        public async Task<IActionResult> UploadAvatar(Guid accountId, [FromForm] AccountRequest.UploadAvatarModel model)
+        {
+            var response = await _accountService.UploadAvatarAsync(accountId, model);
+            return Ok(response);
+        }
+
+        [HttpPut("{accountId}/avatar")]
+        public async Task<IActionResult> UpdateAvatar(Guid accountId, [FromForm] AccountRequest.UploadAvatarModel model)
+        {
+            var response = await _accountService.UpdateAvatarAsync(accountId, model);
+            return Ok(response);
+        }
+
+        [HttpDelete("{accountId}/avatar")]
+        public async Task<IActionResult> DeleteAvatar(Guid accountId)
+        {
+            await _accountService.RemoveAvatarAsync(accountId);
+            return Ok(new { Message = "Avatar deleted successfully" });
         }
     }
 }

@@ -15,8 +15,8 @@ namespace HEALTH_SUPPORT.Services.IServices
         Task AddSubscription(SubscriptionRequest.CreateSubscriptionModel model);
         Task UpdateSubscription(Guid id, SubscriptionRequest.UpdateSubscriptionModel model);
         Task RemoveSubscription(Guid id);
-        Task RegisterSubscription(Guid accountId, SubscriptionRequest.RegisterSubscriptionModel model);
-        Task<List<SubscriptionResponse.GetSubscriptionsModel>> GetUserSubscriptions(Guid accountId);
-        Task CancelSubscription(Guid orderId);
+        Task<Guid> CreateOrder(Guid subscriptionDataId, Guid accountId, int quantity);
+        Task<OrderResponse.GetOrderDetailsModel?> ConfirmOrder(Guid orderId);
+        Task<OrderResponse.GetOrderDetailsModel?> GetOrderDetails(Guid orderId);
     }
 }

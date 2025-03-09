@@ -18,7 +18,7 @@ namespace HEALTH_SUPPORT.Repositories.Entities
         public string Description { get; set; }
 
         [Required]
-        public double Price { get; set; }
+        public float Price { get; set; }
 
         [Required]
         public int Duration { get; set; }

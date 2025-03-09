@@ -10,10 +10,9 @@ namespace HEALTH_SUPPORT.Services.IServices
 {
     public interface IAccountSurveyService
     {
-        Task<List<AccountResponse.GetAccountsModel>> GetAccounts();
-        Task<AccountResponse.GetAccountsModel?> GetAccountById(Guid id);
-        Task AddAccount(AccountRequest.CreateAccountModel model);
-        Task UpdateAccount(Guid id, AccountRequest.UpdateAccountModel model);
-        Task RemoveAccount(Guid id);
+        Task<List<AccountSurveyResponse.GetAccountSurveysModel>> GetAccountSurveys(Guid userId);
+        Task<AccountSurveyResponse.GetAccountSurveysModel?> GetAccountSurveyById(Guid id);
+        Task AddAccountSurvey(AccountSurveyRequest.CreateAccountSurveyModel model);
+        Task RemoveAccountSurvey(Guid id);
     }
 }
