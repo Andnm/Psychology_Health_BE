@@ -17,9 +17,7 @@ namespace HEALTH_SUPPORT.Repositories.Entities
         public int Point { get; set; }
         public DateTimeOffset CreateAt { get; set; }
         public DateTimeOffset? ModifiedAt { get; set; }
-        public Guid QuestionId { get; set; }
-        [ForeignKey("QuestionId")]
-        public SurveyQuestion SurveyQuestion { get; set; }
+        public ICollection<SurveyQuestion> SurveyQuestions { get; set; }
 
     }
 }
